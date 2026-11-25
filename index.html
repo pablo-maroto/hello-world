@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grabador</title>
+<meta name="description" content="Grabá tu pantalla con el sonido de la computadora y tu micrófono. Simple, sin instalar nada.">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --bg-glow: #e8e8ed;
+    --card: rgba(255, 255, 255, 0.78);
+    --card-border: rgba(0, 0, 0, 0.06);
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --hair: rgba(0, 0, 0, 0.08);
+    --row: rgba(118, 118, 128, 0.08);
+    --red: #ff3b30;
+    --red-press: #d70015;
+    --green: #34c759;
+    --blue: #0071e3;
+    --blue-press: #0058b0;
+    --amber-bg: #fff4e0;
+    --amber-text: #8a5300;
+    --switch-off: #e9e9eb;
+    --shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.04);
+    --btn-secondary: rgba(118, 118, 128, 0.12);
+    --btn-secondary-press: rgba(118, 118, 128, 0.22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000;
+      --bg-glow: #1c1c1e;
+      --card: rgba(28, 28, 30, 0.82);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --hair: rgba(255, 255, 255, 0.1);
+      --row: rgba(118, 118, 128, 0.18);
+      --red: #ff453a;
+      --red-press: #ff6961;
+      --green: #30d158;
+      --blue: #0a84ff;
+      --blue-press: #409cff;
+      --amber-bg: #3a2a10;
+      --amber-text: #ffcc66;
+      --switch-off: #39393d;
+      --shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+      --btn-secondary: rgba(118, 118, 128, 0.24);
+      --btn-secondary-press: rgba(118, 118, 128, 0.36);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --bg-glow: #1c1c1e; --card: rgba(28, 28, 30, 0.82);
+    --card-border: rgba(255, 255, 255, 0.08); --text: #f5f5f7; --muted: #98989d;
+    --hair: rgba(255, 255, 255, 0.1); --row: rgba(118, 118, 128, 0.18);
+    --red: #ff453a; --red-press: #ff6961; --green: #30d158; --blue: #0a84ff; --blue-press: #409cff;
+    --amber-bg: #3a2a10; --amber-text: #ffcc66; --switch-off: #39393d;
+    --shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+    --btn-secondary: rgba(118, 118, 128, 0.24); --btn-secondary-press: rgba(118, 118, 128, 0.36);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(1200px 700px at 50% -10%, var(--bg-glow), var(--bg) 60%) fixed, var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px 32px;
+  }
+  button { font: inherit; color: inherit; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  .app-icon {
+    width: 64px; height: 64px; border-radius: 16px; margin: 0 auto 14px;
+    box-shadow: 0 8px 20px -6px rgba(0,0,0,.25);
+    display: block;
+  }
+  h1 {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    font-size: 40px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; margin: 0;
+  }
+  .subtitle { color: var(--muted); font-size: 17px; margin: 8px 0 0; }
+
+  .card {
+    width: 100%; max-width: 460px;
+    background: var(--card);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid var(--card-border);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 32px 24px 24px;
+  }
+
+  .view { display: none; animation: fade .35s ease; }
+  .view.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Big record button */
+  .rec-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .rec-btn {
+    width: 112px; height: 112px; border-radius: 50%;
+    border: 5px solid var(--text); background: transparent;
+    display: grid; place-items: center; cursor: pointer; padding: 0;
+    transition: transform .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .rec-btn:hover { transform: scale(1.03); }
+  .rec-btn:active { transform: scale(0.96); }
+  .rec-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+  .rec-btn .dot {
+    width: 84px; height: 84px; border-radius: 50%; background: var(--red);
+    transition: all .25s cubic-bezier(.3,.7,.4,1);
+  }
+  .rec-btn.stop .dot { width: 40px; height: 40px; border-radius: 10px; }
+  .rec-label { font-size: 17px; font-weight: 600; }
+
+  /* iOS style list */
+  .group { margin-top: 28px; background: var(--row); border-radius: 14px; overflow: hidden; }
+  .row {
+    display: flex; align-items: center; gap: 14px; padding: 12px 16px; min-height: 60px;
+    cursor: pointer; user-select: none;
+  }
+  .row + .row { border-top: 1px solid var(--hair); }
+  .row-icon {
+    width: 32px; height: 32px; border-radius: 8px; flex: none;
+    display: grid; place-items: center; color: #fff;
+  }
+  .row-icon.blue { background: #0a84ff; }
+  .row-icon.orange { background: #ff9f0a; }
+  .row-icon svg { width: 18px; height: 18px; }
+  .row-text { flex: 1; min-width: 0; }
+  .row-title { font-size: 16px; font-weight: 500; }
+  .row-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .switch { position: relative; width: 51px; height: 31px; flex: none; }
+  .switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .switch .track {
+    position: absolute; inset: 0; border-radius: 999px; background: var(--switch-off);
+    transition: background .2s ease; pointer-events: none;
+  }
+  .switch .knob {
+    position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.16);
+    transition: transform .2s cubic-bezier(.3,.7,.4,1); pointer-events: none;
+  }
+  .switch input:checked ~ .track { background: var(--green); }
+  .switch input:checked ~ .knob { transform: translateX(20px); }
+  .switch input:focus-visible ~ .track { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  /* Steps */
+  .steps { margin: 24px 0 0; padding: 0; list-style: none; counter-reset: s; }
+  .steps li {
+    counter-increment: s; position: relative; padding: 0 0 12px 38px; font-size: 15px; line-height: 1.4;
+    color: var(--muted);
+  }
+  .steps li strong { color: var(--text); font-weight: 600; }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -1px;
+    width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: var(--bg);
+    font-size: 13px; font-weight: 700; display: grid; place-items: center;
+  }
+
+  /* Recording view */
+  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+          letter-spacing: .06em; text-transform: uppercase; color: var(--red); }
+  .live .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: pulse 1.4s ease-in-out infinite; }
+  .live.paused { color: var(--muted); }
+  .live.paused .pulse { background: var(--muted); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+  .timer {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    font-size: 64px; font-weight: 300; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+    margin: 6px 0 2px; line-height: 1;
+  }
+  .meta { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; }
+
+  .meters { margin-top: 24px; display: grid; gap: 12px; }
+  .meter { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: center; font-size: 13px; color: var(--muted); }
+  .meter svg { width: 20px; height: 20px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--row); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0%; background: var(--green); border-radius: 3px; transition: width .08s linear; }
+  .meter.off { opacity: .4; }
+
+  .actions { display: flex; gap: 12px; margin-top: 28px; }
+  .btn {
+    flex: 1; border: 0; border-radius: 14px; padding: 15px 18px; font-size: 17px; font-weight: 600;
+    cursor: pointer; transition: background .15s ease, transform .1s ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .btn svg { width: 18px; height: 18px; }
+  .btn-secondary { background: var(--btn-secondary); color: var(--text); }
+  .btn-secondary:hover { background: var(--btn-secondary-press); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { background: var(--red-press); }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-blue:hover { background: var(--blue-press); }
+  .btn-link { background: none; color: var(--blue); font-weight: 500; font-size: 15px; padding: 8px; flex: none; }
+
+  .hint { margin-top: 20px; font-size: 14px; line-height: 1.45; color: var(--muted); text-align: center; }
+
+  .notice {
+    margin-top: 20px; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45;
+    background: var(--amber-bg); color: var(--amber-text); display: none;
+  }
+  .notice.show { display: block; }
+
+  /* Done view */
+  .check {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--green); color: #fff;
+    display: grid; place-items: center; margin: 0 auto 12px;
+  }
+  .check svg { width: 28px; height: 28px; }
+  h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+  video { width: 100%; border-radius: 14px; background: #000; margin-top: 20px; display: block; aspect-ratio: 16 / 9; }
+  .file { margin-top: 12px; font-size: 13px; color: var(--muted); word-break: break-all; }
+
+  /* Countdown */
+  .countdown {
+    position: fixed; inset: 0; display: none; place-items: center; z-index: 10;
+    background: rgba(0,0,0,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .countdown.show { display: grid; }
+  .countdown span {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    font-size: 160px; font-weight: 200; color: #fff; animation: pop 1s ease forwards;
+  }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1); } }
+
+  footer { margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; text-align: center; }
+  #installBtn { display: none; }
+
+  .unsupported h2 { margin-bottom: 8px; }
+  .unsupported p { color: var(--muted); line-height: 1.5; margin: 0; }
+
+  @media (max-width: 420px) {
+    body { padding-top: 32px; }
+    h1 { font-size: 34px; }
+    .card { padding: 28px 18px 20px; border-radius: 24px; }
+    .timer { font-size: 54px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="app-icon" src="icon.svg" alt="">
+  <h1>Grabador</h1>
+  <p class="subtitle">Tu pantalla, con sonido. Así de simple.</p>
+</header>
+
+<main class="card">
+
+  <!-- Navegador no compatible -->
+  <section class="view unsupported center" id="viewUnsupported">
+    <h2>Abrilo desde la computadora</h2>
+    <p>Para grabar la pantalla, abrí esta página en <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong> en una PC o Mac.</p>
+  </section>
+
+  <!-- Inicio -->
+  <section class="view" id="viewIdle">
+    <div class="rec-wrap">
+      <button class="rec-btn" id="recBtn" aria-label="Empezar a grabar">
+        <span class="dot"></span>
+      </button>
+      <div class="rec-label">Grabar</div>
+    </div>
+
+    <div class="group" role="group" aria-label="Opciones de sonido">
+      <label class="row" for="optSystem">
+        <span class="row-icon blue" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+        </span>
+        <span class="row-text">
+          <span class="row-title">Sonido de la computadora</span>
+          <span class="row-sub" style="display:block">Lo que se escucha: Zoom, videos, música</span>
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="optSystem" checked>
+          <span class="track"></span><span class="knob"></span>
+        </span>
+      </label>
+      <label class="row" for="optMic">
+        <span class="row-icon orange" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>
+        </span>
+        <span class="row-text">
+          <span class="row-title">Micrófono</span>
+          <span class="row-sub" style="display:block">Tu voz</span>
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="optMic" checked>
+          <span class="track"></span><span class="knob"></span>
+        </span>
+      </label>
+    </div>
+
+    <ol class="steps">
+      <li>Tocá el botón rojo <strong>Grabar</strong>.</li>
+      <li>En la ventanita que aparece, elegí <strong>Pantalla completa</strong> (o “Toda la pantalla”).</li>
+      <li>Activá <strong>Compartir audio del sistema</strong> y tocá <strong>Compartir</strong>.</li>
+    </ol>
+
+    <div class="notice" id="idleNotice"></div>
+  </section>
+
+  <!-- Grabando -->
+  <section class="view" id="viewRec">
+    <div class="center">
+      <div class="live" id="liveBadge"><span class="pulse"></span><span id="liveText">Grabando</span></div>
+      <div class="timer" id="timer">00:00</div>
+      <div class="meta" id="sizeMeta">0 MB</div>
+    </div>
+
+    <div class="meters">
+      <div class="meter" id="meterSystem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Sonido de la computadora"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+        <div class="bar"><i></i></div>
+      </div>
+      <div class="meter" id="meterMic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Micrófono"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
+
+    <div class="notice" id="recNotice"></div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" id="pauseBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="pauseIcon"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        <span id="pauseText">Pausa</span>
+      </button>
+      <button class="btn btn-red" id="stopBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        Detener
+      </button>
+    </div>
+
+    <p class="hint">Podés minimizar esta ventana y usar Zoom tranquila.<br>Cuando termines, volvé acá y tocá <strong>Detener</strong>.</p>
+  </section>
+
+  <!-- Terminado -->
+  <section class="view" id="viewDone">
+    <div class="center">
+      <div class="check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>
+      </div>
+      <h2>¡Listo!</h2>
+      <p class="subtitle" style="font-size:15px">La grabación se guardó en tu carpeta <strong>Descargas</strong>.</p>
+    </div>
+
+    <video id="preview" controls playsinline></video>
+    <div class="file center" id="fileInfo"></div>
+
+    <div class="actions">
+      <a class="btn btn-secondary" id="downloadAgain" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+        Guardar otra vez
+      </a>
+      <button class="btn btn-blue" id="newBtn">Nueva grabación</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <button class="btn btn-link" id="installBtn">Instalar en el escritorio</button>
+  <div>Nada sale de tu computadora. Todo se graba y se guarda en tu equipo.</div>
+</footer>
+
+<div class="countdown" id="countdown" aria-live="assertive"><span id="countNum">3</span></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const views = ['viewUnsupported', 'viewIdle', 'viewRec', 'viewDone'];
+  const show = (id) => views.forEach(v => $(v).classList.toggle('active', v === id));
+
+  const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.MediaRecorder);
+  show(supported ? 'viewIdle' : 'viewUnsupported');
+  if (!supported) return;
+
+  // Recordar opciones
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v === '1'; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v ? '1' : '0'); } catch {} }
+  };
+  $('optSystem').checked = store.get('optSystem', true);
+  $('optMic').checked = store.get('optMic', true);
+  $('optSystem').addEventListener('change', e => store.set('optSystem', e.target.checked));
+  $('optMic').addEventListener('change', e => store.set('optMic', e.target.checked));
+
+  // Formato: preferimos MP4 (se abre en cualquier lado); si no, WebM.
+  const FORMATS = [
+    { mime: 'video/mp4;codecs="avc1.640028,mp4a.40.2"', ext: 'mp4' },
+    { mime: 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"', ext: 'mp4' },
+    { mime: 'video/mp4;codecs=avc1,opus', ext: 'mp4' },
+    { mime: 'video/mp4', ext: 'mp4' },
+    { mime: 'video/webm;codecs=vp9,opus', ext: 'webm' },
+    { mime: 'video/webm;codecs=vp8,opus', ext: 'webm' },
+    { mime: 'video/webm', ext: 'webm' },
+  ];
+  const format = FORMATS.find(f => MediaRecorder.isTypeSupported(f.mime)) || { mime: '', ext: 'webm' };
+
+  let displayStream = null, micStream = null, audioCtx = null, recorder = null;
+  let chunks = [], bytes = 0, startTime = 0, pausedTotal = 0, pausedAt = 0;
+  let tickTimer = null, meterRaf = null, analysers = {};
+  let lastUrl = null, busy = false;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmtTime = (ms) => {
+    const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
+  };
+  const fmtSize = (b) => b < 1e9 ? `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB` : `${(b / 1e9).toFixed(2)} GB`;
+  const fileName = () => {
+    const d = new Date();
+    return `Grabacion ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}.${pad(d.getMinutes())}.${format.ext}`;
+  };
+  const notice = (el, html) => { el.innerHTML = html || ''; el.classList.toggle('show', !!html); };
+  const elapsed = () => (recorder && recorder.state === 'paused' ? pausedAt : performance.now()) - startTime - pausedTotal;
+
+  function cleanup() {
+    clearInterval(tickTimer); cancelAnimationFrame(meterRaf);
+    [displayStream, micStream].forEach(s => s && s.getTracks().forEach(t => t.stop()));
+    displayStream = micStream = null;
+    if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+    analysers = {};
+    window.removeEventListener('beforeunload', guard);
+  }
+  function guard(e) { e.preventDefault(); e.returnValue = ''; }
+
+  function countdown() {
+    return new Promise(resolve => {
+      const box = $('countdown'), num = $('countNum');
+      let n = 3;
+      const step = () => {
+        if (n === 0) { box.classList.remove('show'); return resolve(); }
+        num.textContent = n;
+        num.style.animation = 'none'; void num.offsetWidth; num.style.animation = '';
+        n--; setTimeout(step, 1000);
+      };
+      box.classList.add('show'); step();
+    });
+  }
+
+  async function start() {
+    if (busy) return; busy = true;
+    notice($('idleNotice'), '');
+    const wantSystem = $('optSystem').checked;
+    const wantMic = $('optMic').checked;
+    const warnings = [];
+    // El audio se prepara ya, mientras el clic todavía cuenta como gesto del usuario
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    try {
+      // 1) Micrófono (primero, así el permiso no aparece en medio de la grabación)
+      if (wantMic) {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          });
+        } catch (err) {
+          warnings.push('No se pudo usar el micrófono, así que tu voz no se va a grabar. Si querés, permitilo desde el candado 🔒 al lado de la dirección de la página.');
+        }
+      }
+
+      // 2) Pantalla (+ sonido de la computadora)
+      try {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: wantSystem ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : false,
+          systemAudio: wantSystem ? 'include' : 'exclude',
+          selfBrowserSurface: 'exclude',
+          surfaceSwitching: 'include',
+          monitorTypeSurfaces: 'include',
+        });
+      } catch (err) {
+        cleanup();
+        if (err && err.name === 'NotAllowedError') {
+          notice($('idleNotice'), 'No se eligió ninguna pantalla. Cuando quieras, tocá <strong>Grabar</strong> de nuevo.');
+        } else {
+          notice($('idleNotice'), 'No se pudo empezar a grabar. Probá de nuevo o reiniciá el navegador.');
+        }
+        return;
+      }
+
+      const sysTracks = displayStream.getAudioTracks();
+      if (wantSystem && sysTracks.length === 0) {
+        warnings.push('<strong>Ojo: no se está grabando el sonido de la computadora</strong> (Zoom no se va a escuchar). Tocá <strong>Detener</strong>, empezá de nuevo, elegí <strong>Pantalla completa</strong> y activá <strong>Compartir audio del sistema</strong>.');
+      }
+
+      // 3) Mezclamos todo el audio en una sola pista
+      const tracks = [...displayStream.getVideoTracks()];
+      if (sysTracks.length || micStream) {
+        await audioCtx.resume().catch(() => {});
+        const dest = audioCtx.createMediaStreamDestination();
+        const add = (stream, key) => {
+          const src = audioCtx.createMediaStreamSource(stream);
+          src.connect(dest);
+          const an = audioCtx.createAnalyser(); an.fftSize = 512;
+          src.connect(an); analysers[key] = an;
+        };
+        if (sysTracks.length) add(new MediaStream(sysTracks), 'system');
+        if (micStream) add(micStream, 'mic');
+        tracks.push(...dest.stream.getAudioTracks());
+      } else {
+        audioCtx.close().catch(() => {}); audioCtx = null;
+      }
+
+      await countdown();
+
+      const stream = new MediaStream(tracks);
+      const opts = { videoBitsPerSecond: 3_000_000, audioBitsPerSecond: 128_000 };
+      if (format.mime) opts.mimeType = format.mime;
+      try { recorder = new MediaRecorder(stream, opts); }
+      catch { recorder = new MediaRecorder(stream); }
+
+      chunks = []; bytes = 0; pausedTotal = 0;
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size) { chunks.push(e.data); bytes += e.data.size; } };
+      recorder.onstop = finish;
+      recorder.start(1000);
+      startTime = performance.now();
+
+      // Si tocan "Dejar de compartir" en la barra del navegador, terminamos igual
+      displayStream.getVideoTracks()[0].addEventListener('ended', stop);
+
+      window.addEventListener('beforeunload', guard);
+      $('meterSystem').classList.toggle('off', !analysers.system);
+      $('meterMic').classList.toggle('off', !analysers.mic);
+      notice($('recNotice'), warnings.join('<br><br>'));
+      setPausedUI(false);
+      tick(); tickTimer = setInterval(tick, 250);
+      meters();
+      show('viewRec');
+      document.title = '● Grabando — Grabador';
+    } finally {
+      busy = false;
+    }
+  }
+
+  function tick() {
+    $('timer').textContent = fmtTime(elapsed());
+    $('sizeMeta').textContent = fmtSize(bytes);
+  }
+
+  function meters() {
+    const buf = new Uint8Array(512);
+    const level = (an) => {
+      an.getByteTimeDomainData(buf);
+      let peak = 0;
+      for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
+      return Math.min(100, Math.sqrt(peak / 128) * 110);
+    };
+    const loop = () => {
+      for (const [key, el] of [['system', 'meterSystem'], ['mic', 'meterMic']]) {
+        const an = analysers[key];
+        $(el).querySelector('i').style.width = an && recorder && recorder.state === 'recording' ? level(an) + '%' : '0%';
+      }
+      meterRaf = requestAnimationFrame(loop);
+    };
+    loop();
+  }
+
+  function setPausedUI(paused) {
+    $('liveBadge').classList.toggle('paused', paused);
+    $('liveText').textContent = paused ? 'En pausa' : 'Grabando';
+    $('pauseText').textContent = paused ? 'Seguir' : 'Pausa';
+    $('pauseIcon').innerHTML = paused
+      ? '<path d="M7 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 7 5.5Z"/>'
+      : '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
+    document.title = paused ? 'Ⅱ En pausa — Grabador' : '● Grabando — Grabador';
+  }
+
+  function togglePause() {
+    if (!recorder) return;
+    if (recorder.state === 'recording') {
+      recorder.pause(); pausedAt = performance.now(); setPausedUI(true);
+    } else if (recorder.state === 'paused') {
+      pausedTotal += performance.now() - pausedAt; recorder.resume(); setPausedUI(false);
+    }
+  }
+
+  function stop() {
+    if (recorder && recorder.state !== 'inactive') {
+      if (recorder.state === 'paused') pausedTotal += performance.now() - pausedAt;
+      recorder.stop();
+    }
+  }
+
+  function finish() {
+    const duration = elapsed();
+    cleanup();
+    const type = (recorder && recorder.mimeType) || format.mime || 'video/webm';
+    const blob = new Blob(chunks, { type: type.split(';')[0] });
+    chunks = [];
+    recorder = null;
+
+    if (lastUrl) URL.revokeObjectURL(lastUrl);
+    lastUrl = URL.createObjectURL(blob);
+    const name = fileName();
+
+    const a = $('downloadAgain');
+    a.href = lastUrl; a.download = name;
+    a.click(); // Se guarda solo en Descargas
+
+    $('preview').src = lastUrl;
+    $('fileInfo').textContent = `${name} · ${fmtTime(duration)} · ${fmtSize(blob.size)}`;
+    document.title = 'Grabador';
+    show('viewDone');
+  }
+
+  function reset() {
+    $('preview').removeAttribute('src'); $('preview').load();
+    notice($('idleNotice'), '');
+    show('viewIdle');
+  }
+
+  $('recBtn').addEventListener('click', start);
+  $('pauseBtn').addEventListener('click', togglePause);
+  $('stopBtn').addEventListener('click', stop);
+  $('newBtn').addEventListener('click', reset);
+
+  // Instalar como app de escritorio (Chrome / Edge)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferredPrompt = e; $('installBtn').style.display = 'inline-flex';
+  });
+  $('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice.catch(() => {});
+    deferredPrompt = null; $('installBtn').style.display = 'none';
+  });
+  window.addEventListener('appinstalled', () => { $('installBtn').style.display = 'none'; });
+
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
